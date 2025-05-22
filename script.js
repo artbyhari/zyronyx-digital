@@ -54,8 +54,8 @@ document.addEventListener("DOMContentLoaded", function() {
     });
     
     // ===== VIDEO OPTIMIZATION =====
-    // Optimized video player functionality
-    initializeVideoPlayers();
+    // Initialize video players with optimized controls
+    initVideoPortfolio();
     
     // ===== ANIMATIONS =====
     // Initialize animations for elements with animate-fadeInUp class
@@ -142,366 +142,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 /**
- * Initialize optimized video players
- * This function handles all video player functionality with performance optimizations
- */
-function initializeVideoPlayers() {
-    // Get all video containers
-    const videoContainers = document.querySelectorAll('.video-container');
-    
-    if (!videoContainers.length) return;
-    
-    videoContainers.forEach(container => {
-        const video = container.querySelector('.portfolio-video');
-        const playButton = container.querySelector('.play-button');
-        const videoControls = container.querySelector('.video-controls');
-        const timeline = container.querySelector('.timeline');
-        const progress = container.querySelector('.progress');
-        const playPauseBtn = container.querySelector('.play-pause-btn');
-        const muteBtn = container.querySelector('.mute-btn');
-        const fullscreenBtn = container.querySelector('.fullscreen-btn');
-        const timeDisplay = container.querySelector('.time-display');
-        
-        if (!video) return;
-        
-        // Set initial state
-        let isPlaying = false;
-        let isMuted = false;
-        let isFullscreen = false;
-        let hideControlsTimeout;
-        
-        // Lazy load video when container is visible
-        const videoObserver = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        const videoSrc = video.getAttribute('data-src');
-                        if (videoSrc && !video.src) {
-                            // Add loading indicator
-                            container.classList.add('loading');
-                            
-                            // Set video source
-                            video.src = videoSrc;
-                            
-                            // Remove loading indicator when video can play
-                            video.addEventListener('canplay', () => {
-                                container.classList.remove('loading');
-                            });
-                            
-                            // Handle video load error
-                            video.addEventListener('error', () => {
-                                container.classList.remove('loading');
-                                console.error('Video failed to load:', videoSrc);
-                            });
-                            
-                            videoObserver.unobserve(container);
-                        }
-                    }
-                });
-            },
-            {
-                rootMargin: '200px',
-                threshold: 0.1
-            }
-        );
-        
-        videoObserver.observe(container);
-        
-        // Play/Pause functionality
-        function togglePlay() {
-            if (!video.src && video.getAttribute('data-src')) {
-                video.src = video.getAttribute('data-src');
-            }
-            
-            if (video.paused) {
-                video.play()
-                    .then(() => {
-                        isPlaying = true;
-                        playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                        playButton.style.opacity = '0';
-                        showControls();
-                    })
-                    .catch(error => {
-                        console.error('Error playing video:', error);
-                    });
-            } else {
-                video.pause();
-                isPlaying = false;
-                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                playButton.style.opacity = '1';
-            }
-        }
-        
-        // Show controls with auto-hide
-        function showControls() {
-            if (videoControls) {
-                videoControls.style.opacity = '1';
-                
-                clearTimeout(hideControlsTimeout);
-                
-                if (isPlaying) {
-                    hideControlsTimeout = setTimeout(() => {
-                        videoControls.style.opacity = '0';
-                    }, 3000);
-                }
-            }
-        }
-        
-        // Update progress bar
-        function updateProgress() {
-            if (!timeline || !progress || !video) return;
-            
-            const percent = (video.currentTime / video.duration) * 100;
-            progress.style.width = `${percent}%`;
-            
-            // Update time display
-            if (timeDisplay) {
-                const currentMinutes = Math.floor(video.currentTime / 60);
-                const currentSeconds = Math.floor(video.currentTime % 60);
-                const durationMinutes = Math.floor(video.duration / 60) || 0;
-                const durationSeconds = Math.floor(video.duration % 60) || 0;
-                
-                timeDisplay.textContent = `${currentMinutes}:${currentSeconds < 10 ? '0' : ''}${currentSeconds} / ${durationMinutes}:${durationSeconds < 10 ? '0' : ''}${durationSeconds}`;
-            }
-            
-            // Use requestAnimationFrame for smoother updates
-            if (isPlaying) {
-                requestAnimationFrame(updateProgress);
-            }
-        }
-        
-        // Seek functionality
-        function seek(e) {
-            if (!timeline || !video) return;
-            
-            const rect = timeline.getBoundingClientRect();
-            const pos = (e.clientX - rect.left) / rect.width;
-            video.currentTime = pos * video.duration;
-            updateProgress();
-        }
-        
-        // Toggle mute
-        function toggleMute() {
-            if (!video || !muteBtn) return;
-            
-            video.muted = !video.muted;
-            isMuted = video.muted;
-            
-            muteBtn.innerHTML = isMuted ? 
-                '<i class="bi bi-volume-mute-fill"></i>' : 
-                '<i class="bi bi-volume-up-fill"></i>';
-        }
-        
-        // Toggle fullscreen
-        function toggleFullscreen() {
-            if (!container || !fullscreenBtn) return;
-            
-            if (!isFullscreen) {
-                if (container.requestFullscreen) {
-                    container.requestFullscreen();
-                } else if (container.webkitRequestFullscreen) {
-                    container.webkitRequestFullscreen();
-                } else if (container.msRequestFullscreen) {
-                    container.msRequestFullscreen();
-                }
-                
-                fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen-exit"></i>';
-            } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                } else if (document.msExitFullscreen) {
-                    document.msExitFullscreen();
-                }
-                
-                fullscreenBtn.innerHTML = '<i class="bi bi-fullscreen"></i>';
-            }
-            
-            isFullscreen = !isFullscreen;
-        }
-        
-        // Event listeners
-        if (playButton) {
-            playButton.addEventListener('click', togglePlay);
-        }
-        
-        if (video) {
-            video.addEventListener('click', () => {
-                if (isPlaying) {
-                    showControls();
-                } else {
-                    togglePlay();
-                }
-            });
-            
-            video.addEventListener('play', () => {
-                isPlaying = true;
-                playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                playButton.style.opacity = '0';
-                requestAnimationFrame(updateProgress);
-            });
-            
-            video.addEventListener('pause', () => {
-                isPlaying = false;
-                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                playButton.style.opacity = '1';
-            });
-            
-            video.addEventListener('timeupdate', () => {
-                // Use throttled updates for better performance
-                if (!video.throttleUpdate) {
-                    video.throttleUpdate = true;
-                    setTimeout(() => {
-                        updateProgress();
-                        video.throttleUpdate = false;
-                    }, 50);
-                }
-            });
-            
-            video.addEventListener('ended', () => {
-                isPlaying = false;
-                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                playButton.style.opacity = '1';
-                video.currentTime = 0;
-            });
-            
-            // Show controls when mouse moves over video
-            container.addEventListener('mousemove', showControls);
-            
-            // Hide controls when mouse leaves container
-            container.addEventListener('mouseleave', () => {
-                if (isPlaying) {
-                    clearTimeout(hideControlsTimeout);
-                    hideControlsTimeout = setTimeout(() => {
-                        videoControls.style.opacity = '0';
-                    }, 1000);
-                }
-            });
-        }
-        
-        if (playPauseBtn) {
-            playPauseBtn.addEventListener('click', togglePlay);
-        }
-        
-        if (muteBtn) {
-            muteBtn.addEventListener('click', toggleMute);
-        }
-        
-        if (fullscreenBtn) {
-            fullscreenBtn.addEventListener('click', toggleFullscreen);
-        }
-        
-        if (timeline) {
-            timeline.addEventListener('click', seek);
-        }
-        
-        // Handle fullscreen change
-        document.addEventListener('fullscreenchange', () => {
-            isFullscreen = !!document.fullscreenElement;
-            if (fullscreenBtn) {
-                fullscreenBtn.innerHTML = isFullscreen ? 
-                    '<i class="bi bi-fullscreen-exit"></i>' : 
-                    '<i class="bi bi-fullscreen"></i>';
-            }
-        });
-    });
-}
-function initInstantPlayVideos() {
-    const videoContainers = document.querySelectorAll('.video-container');
-    
-    videoContainers.forEach(container => {
-        const video = container.querySelector('.portfolio-video');
-        const playButton = container.querySelector('.play-button');
-        const videoControls = container.querySelector('.video-controls');
-        const playPauseBtn = container.querySelector('.play-pause-btn');
-        
-        if (!video) return;
-
-        // Preload metadata for faster playback start
-        video.preload = 'metadata';
-        
-        // Set video attributes for better performance
-        video.playsInline = true;
-        video.disableRemotePlayback = true;
-        
-        // Track if video is loaded
-        let isVideoLoaded = false;
-        
-        // Click handler for instant playback
-        const playVideo = () => {
-            if (!isVideoLoaded) {
-                // Show loading state briefly
-                container.classList.add('loading');
-                
-                // Force load the video
-                video.load();
-                
-                video.oncanplaythrough = () => {
-                    container.classList.remove('loading');
-                    isVideoLoaded = true;
-                    video.play()
-                        .then(() => {
-                            playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                            playButton.style.opacity = '0';
-                        })
-                        .catch(e => console.error('Playback error:', e));
-                };
-                
-                video.onerror = () => {
-                    container.classList.remove('loading');
-                    console.error('Video failed to load');
-                };
-            } else {
-                if (video.paused) {
-                    video.play()
-                        .then(() => {
-                            playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                            playButton.style.opacity = '0';
-                        })
-                        .catch(e => console.error('Playback error:', e));
-                } else {
-                    video.pause();
-                    playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                    playButton.style.opacity = '1';
-                }
-            }
-        };
-
-        // Set up event listeners
-        playButton.addEventListener('click', playVideo);
-        video.addEventListener('click', playVideo);
-        
-        if (playPauseBtn) {
-            playPauseBtn.addEventListener('click', playVideo);
-        }
-
-        // Preconnect to video sources when container is near viewport
-        const videoObserver = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    // Create a hidden link to preconnect to video source
-                    const videoSrc = video.getAttribute('src') || video.querySelector('source')?.src;
-                    if (videoSrc && !isVideoLoaded) {
-                        const preconnector = document.createElement('link');
-                        preconnector.rel = 'preconnect';
-                        preconnector.href = new URL(videoSrc).origin;
-                        document.head.appendChild(preconnector);
-                        
-                        // Start loading metadata in the background
-                        video.load();
-                        
-                        videoObserver.unobserve(container);
-                    }
-                }
-            });
-        }, { rootMargin: '300px', threshold: 0.01 });
-        
-        videoObserver.observe(container);
-    });
-}
-
-/**
  * Initialize all video players with optimized controls
  */
 function initVideoPortfolio() {
@@ -526,6 +166,7 @@ function initVideoPortfolio() {
         let isFullscreen = false;
         let hideControlsTimeout;
         let isVideoLoaded = false;
+        let isDragging = false;
         
         // Play/Pause functionality with instant playback
         function togglePlay() {
@@ -539,8 +180,8 @@ function initVideoPortfolio() {
                     video.play()
                         .then(() => {
                             isPlaying = true;
-                            playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                            playButton.style.opacity = '0';
+                            if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                            if (playButton) playButton.style.opacity = '0';
                             showControls();
                         })
                         .catch(e => console.error('Playback error:', e));
@@ -555,16 +196,16 @@ function initVideoPortfolio() {
                     video.play()
                         .then(() => {
                             isPlaying = true;
-                            playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                            playButton.style.opacity = '0';
+                            if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                            if (playButton) playButton.style.opacity = '0';
                             showControls();
                         })
                         .catch(e => console.error('Playback error:', e));
                 } else {
                     video.pause();
                     isPlaying = false;
-                    playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                    playButton.style.opacity = '1';
+                    if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                    if (playButton) playButton.style.opacity = '1';
                 }
             }
         }
@@ -601,7 +242,7 @@ function initVideoPortfolio() {
                     `${durationMinutes}:${durationSeconds < 10 ? '0' : ''}${durationSeconds}`;
             }
             
-            if (isPlaying) {
+            if (isPlaying && !isDragging) {
                 requestAnimationFrame(updateProgress);
             }
         }
@@ -673,15 +314,15 @@ function initVideoPortfolio() {
             
             video.addEventListener('play', () => {
                 isPlaying = true;
-                playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
-                playButton.style.opacity = '0';
+                if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                if (playButton) playButton.style.opacity = '0';
                 requestAnimationFrame(updateProgress);
             });
             
             video.addEventListener('pause', () => {
                 isPlaying = false;
-                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                playButton.style.opacity = '1';
+                if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                if (playButton) playButton.style.opacity = '1';
             });
             
             video.addEventListener('timeupdate', () => {
@@ -696,10 +337,28 @@ function initVideoPortfolio() {
             
             video.addEventListener('ended', () => {
                 isPlaying = false;
-                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
-                playButton.style.opacity = '1';
+                if (playPauseBtn) playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                if (playButton) playButton.style.opacity = '1';
                 video.currentTime = 0;
             });
+            
+            // Handle timeline dragging
+            if (timeline) {
+                timeline.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    seek(e);
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        seek(e);
+                    }
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    isDragging = false;
+                });
+            }
             
             // Preload video when container is near viewport
             const videoObserver = new IntersectionObserver((entries) => {
@@ -734,6 +393,21 @@ function initVideoPortfolio() {
             timeline.addEventListener('click', seek);
         }
         
+        // Show controls when mouse moves over container
+        container.addEventListener('mousemove', () => {
+            showControls();
+        });
+        
+        // Hide controls when mouse leaves container
+        container.addEventListener('mouseleave', () => {
+            if (isPlaying && videoControls) {
+                clearTimeout(hideControlsTimeout);
+                hideControlsTimeout = setTimeout(() => {
+                    videoControls.style.opacity = '0';
+                }, 1000);
+            }
+        });
+        
         // Handle fullscreen change
         document.addEventListener('fullscreenchange', () => {
             isFullscreen = !!document.fullscreenElement;
@@ -748,11 +422,9 @@ function initVideoPortfolio() {
 
 // Initialize when DOM is ready
 if (document.readyState !== 'loading') {
-    initInstantPlayVideos();
     initVideoPortfolio();
 } else {
     document.addEventListener('DOMContentLoaded', () => {
-        initInstantPlayVideos();
         initVideoPortfolio();
     });
 }
